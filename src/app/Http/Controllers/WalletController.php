@@ -6,6 +6,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+use App\Enums\TransactionStatus;
+use App\Enums\TransactionType;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Services\WalletService;
@@ -41,12 +43,15 @@ class WalletController extends Controller
             'amount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $depositAmount = 100 * $request->input('amount');
+        $amount = 100 * $request->input('amount');
+        $account = auth()->user()->account;
 
         try {
-            $this->walletService->deposit(auth()->user()->account, $depositAmount);
+            $this->walletService->deposit($account, $amount);
+
             return redirect()->route('wallet')->with('success', self::DEPOSIT_SUCCESS_MSG);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             return redirect()->route('wallet')->with('danger', self::DEPOSIT_FAILED_MSG);
         }
     }
@@ -58,19 +63,19 @@ class WalletController extends Controller
             'receiver_account_id' => ['required', 'exists:accounts,id', 'different:' . auth()->user()->account->id],
         ]);
 
-        $transferAmount = 100 * $request->input('amount');
-        $receiverAccountId = $request->input('receiver_account_id');
+        $amount = 100 * $request->input('amount');
+        $receiver_account_id = $request->input('receiver_account_id');
 
         try {
-            $receiverAccount = Account::where('user_id', $receiverAccountId)->firstOrFail();
-            $senderAccount = auth()->user()->account;
+            $receiver_account = Account::where('id', $receiver_account_id)->firstOrFail();
+            $sender_account = auth()->user()->account;
 
-            if ($senderAccount->balance < $transferAmount) {
+            if ($sender_account->balance < $amount) {
                 return redirect()->route('wallet')
                                  ->with('danger', self::BALANCE_INSUFFICIENT_MSG);
             }
 
-            $this->walletService->transfer($senderAccount, $receiverAccount, $transferAmount);
+            $this->walletService->transfer($sender_account, $receiver_account, $amount);
 
             return redirect()->route('wallet')
                              ->with('success', self::TRANSFER_SUCCESS_MSG);

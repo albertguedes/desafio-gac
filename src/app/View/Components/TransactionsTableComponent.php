@@ -38,25 +38,12 @@ class TransactionsTableComponent extends Component
                 $reversible = true;
             }
 
-            $type_color = 'success';
-
-            if($transaction->type === 'transfer_sent') {
-                $type_color = 'danger';
-            }
-
-            if (($transaction->type === 'reversal')){
-                $related_type = $transaction->relatedTransaction->type;
-                if ( $related_type == 'transfer_received' || $related_type == 'deposit') {
-                    $type_color = 'danger';
-                }
-            }
-
             $this->transactions[] = [
                 'id' => $transaction->id,
                 'created_at' => $transaction->created_at->format('d/m/Y H:i:s'),
                 'type' => str_replace('_', ' ', $transaction->type),
-                'type_color' => $type_color,
                 'amount' => $transaction->amount,
+                'amount_color' => ($transaction->amount > 0) ? 'success' : 'danger',
                 'related_transaction_id' => $transaction->relatedTransaction->id ?? null,
                 'related_account_user_name' => $transaction->relatedAccount->user->name ?? null,
                 'status' => $transaction->status,

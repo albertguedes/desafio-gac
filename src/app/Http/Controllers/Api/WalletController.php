@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Exception;
+use Illuminate\Http\JsonResponse;
 
 use App\Models\Account;
 use App\Models\Transaction;
@@ -12,56 +12,68 @@ use App\Services\WalletService;
 
 class WalletController extends Controller
 {
-    protected WalletService $walletService;
+    const DEPOSIT_SUCCESS_MSG = 'Deposit successful';
+    const DEPOSIT_FAILED_MSG = 'Deposit failed';
 
-    public function __construct(WalletService $walletService)
-    {
-        $this->middleware('auth');
-        $this->walletService = $walletService;
-    }
+    const TRANSFER_SUCCESS_MSG = 'Transfer successful';
+    const TRANSFER_FAILED_MSG = 'Transfer failed';
 
-    public function deposit(Request $request)
-    {
-        $request->validate([
-            'amount' => 'required|numeric|min:1',
-        ]);
+    const REVERSE_SUCCESS_MSG = 'Reverse successful';
+    const REVERSE_FAILED_MSG = 'Reverse failed';
 
-        $account = Auth::user()->account;
-        $transaction = $this->walletService->deposit($account, $request->amount);
+    const BALANCE_INSUFFICIENT_MSG = 'Insufficient balance';
 
-        return response()->json(['transaction' => $transaction], 201);
-    }
+    public function __construct (protected readonly WalletService $walletService) {}
 
-    public function transfer(Request $request)
+    public function deposit(Request $request): JsonResponse
     {
         $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'receiver_id' => 'required|exists:users,id|different:' . Auth::id(),
+            'amount' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $senderAccount = Auth::user()->account;
-        $receiverAccount = Account::where('user_id', $request->receiver_id)->first();
+        $deposit_amount = 100 * $request->input('amount');
 
         try {
-            $transactions = $this->walletService->transfer($senderAccount, $receiverAccount, $request->amount);
-            return response()->json(['transactions' => $transactions], 201);
+            $this->walletService->deposit(auth()->user()->account, $deposit_amount);
+            return response()->json(['message' => self::DEPOSIT_SUCCESS_MSG]);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return redirect()->json(['message' => self::DEPOSIT_FAILED_MSG]);
         }
     }
 
-    public function reverse(Request $request, Transaction $transaction)
+    public function transfer(Request $request): JsonResponse
     {
-        // Só permite reverter transações do usuário autenticado
-        if ($transaction->account->user_id !== Auth::id()) {
-            return response()->json(['error' => 'Não autorizado'], 403);
-        }
+        $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'receiver_account_id' => ['required', 'exists:accounts,id', 'different:' . auth()->user()->account->id],
+        ]);
+
+        $transfer_amount = 100 * $request->input('amount');
+        $receiver_account_id = $request->input('receiver_account_id');
 
         try {
-            $reversedTransaction = $this->walletService->reverse($transaction);
-            return response()->json(['transaction' => $reversedTransaction]);
+            $receiver_account = Account::where('id', $receiver_account_id)->firstOrFail();
+            $sender_account = auth()->user()->account;
+
+            if ($sender_account->balance < $transfer_amount) {
+                return redirect()->json(['message' => self::BALANCE_INSUFFICIENT_MSG]);
+            }
+
+            $this->walletService->transfer($sender_account, $receiver_account, $transfer_amount);
+
+            return redirect()->json(['message' => self::TRANSFER_SUCCESS_MSG]);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            return redirect()->json(['message' => self::TRANSFER_FAILED_MSG]);
+        }
+    }
+
+    public function reverse(Transaction $transaction): RedirectResponse
+    {
+        try {
+            $this->walletService->reversal($transaction);
+            return redirect()->json(['message' => self::REVERSE_SUCCESS_MSG]);
+        } catch (Exception $exception) {
+            return redirect()->json(['message' => self::REVERSE_FAILED_MSG]);
         }
     }
 }

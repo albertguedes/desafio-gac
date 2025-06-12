@@ -16,7 +16,7 @@
         <tr class="@if($transaction['status'] === 'canceled') table-danger @endif">
             <td scope="row" class="text-center">{{ $transaction['id'] }}</td>
             <td>{{ $transaction['created_at'] }}</td>
-            <td class="text-right text-{{ $transaction['type_color'] }}" >@money($transaction['amount'])</td>
+            <td class="text-right text-{{ $transaction['amount_color'] }}" >@money($transaction['amount'])</td>
             <td class="text-capitalize" >{{ $transaction['type'] }}</td>
             <td class="text-center" >{{ $transaction['related_transaction_id'] ?? '-' }}</td>
             <td class="text-center text-capitalize" >{{ $transaction['related_account_user_name'] ?? '-' }}</td>

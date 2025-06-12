@@ -41,11 +41,11 @@ class TransactionFactory extends Factory
             }
         }
 
-        $amount = random_int(1, 100000);
         $status = $statuses[array_rand($statuses)];
 
         switch($type) {
             case 'deposit':
+                $amount = random_int(1, 100000);
                 $account->balance += $amount;
                 $account->save();
                 $status = 'completed';
@@ -55,11 +55,13 @@ class TransactionFactory extends Factory
                 $related_account = Account::inRandomOrder()->first();
                 $related_account_id = $related_account->id;
 
+                $amount = -random_int(1, 100000);
+
                 if($account->balance >= $amount){
-                    $account->balance -= $amount;
+                    $account->balance += $amount;
                     $account->save();
 
-                    $related_account->balance += $amount;
+                    $related_account->balance -= $amount;
                     $related_account->save();
 
                     $status = 'completed';
@@ -74,12 +76,13 @@ class TransactionFactory extends Factory
                 $related_account = Account::inRandomOrder()->first();
                 $related_account_id = $related_account->id;
 
+                $amount = random_int(1, 100000);
                 if($related_account->balance >= $amount){
-                    $related_account->balance -= $amount;
-                    $related_account->save();
-
                     $account->balance += $amount;
                     $account->save();
+
+                    $related_account->balance -= $amount;
+                    $related_account->save();
 
                     $status = 'completed';
                 }
@@ -96,30 +99,35 @@ class TransactionFactory extends Factory
 
                 switch($relatedTransaction->type){
                     case 'deposit':
-                        $account->balance -= $relatedTransaction->amount;
+                        $amount = -$relatedTransaction->amount;
+                        $account->balance += $amount;
                         $account->save();
                         break;
 
                     case 'transfer_sent':
+                        $amount = $relatedTransaction->amount;
+
+                        $account->balance += $amount;
+                        $account->save();
+
                         $related_account = $relatedTransaction->relatedAccount;
                         $related_account_id = $related_account->id;
-
-                        $related_account->balance -= $relatedTransaction->amount;
+                        $related_account->balance -= $amount;
                         $related_account->save();
 
-                        $account->balance += $relatedTransaction->amount;
-                        $account->save();
                         break;
 
                     case 'transfer_received':
+                        $amount = -$relatedTransaction->amount;
+
+                        $account->balance += $amount;
+                        $account->save();
+
                         $related_account = $relatedTransaction->relatedAccount;
                         $related_account_id = $related_account->id;
-
-                        $related_account->balance += $relatedTransaction->amount;
+                        $related_account->balance -= $amount;
                         $related_account->save();
 
-                        $account->balance -= $relatedTransaction->amount;
-                        $account->save();
                         break;
                 }
 
