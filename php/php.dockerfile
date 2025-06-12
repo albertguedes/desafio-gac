@@ -21,8 +21,14 @@ RUN docker-php-ext-install pdo_pgsql pgsql
 RUN apk add --update nodejs npm
 
 # Download and install Composer
+RUN mkdir /home/www-data/.composer \
+    && chown www-data:www-data /home/www-data/.composer \
+    && chmod -R 777 /home/www-data/.composer
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
 RUN php composer-setup.php --install-dir=/usr/local/bin --filename=composer
 RUN php -r "unlink('composer-setup.php');"
+
+# Case laravel storage folder exists, enable read and write permission.
+RUN chmod -R 777 /var/www/html/storage
 
 WORKDIR /var/www/html

@@ -21,7 +21,7 @@ services:
         image: postgresql-image
 
         # Custom name for the container.
-        container_name: postgresql-container
+        container_name: gac-postgresql-container
 
         # Expose the port "5432" on host port "2345".
         ports: 
@@ -39,7 +39,7 @@ services:
         image: php-fpm-image
 
         # Custom name for the container.
-        container_name: php-fpm-container
+        container_name: gac-php-fpm-container
 
         # Expose the port "9000" of php-fpm on host port "9090".
         ports: 
@@ -64,7 +64,7 @@ services:
         image: nginx-image
 
         # Custom name for the container.
-        container_name: nginx-container
+        container_name: gac-nginx-container
 
         volumes:
             - ./src/public:/var/www/html/public

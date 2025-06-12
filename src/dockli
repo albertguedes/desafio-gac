@@ -10,7 +10,7 @@
 set -e
 
 # Set the docker path.
-DOCKER="/usr/bin/docker"
+DOCKER="$(command -v docker)" || DOCKER="$(which docker)" || DOCKER="$(whence docker)"
 
 # Verify if the docker is on system.
 if ! command -v $DOCKER > /dev/null; then
@@ -28,7 +28,7 @@ fi
 OPTIONS="--interactive --tty --user $(id -u)"
 
 # The name of the container that store the source code.
-CONTAINER='php-fpm-container'
+CONTAINER='gac-php-fpm-container'
 
 # Verify if container dont exists.
 if ! $DOCKER ps -a --format "{{.Names}}" | grep -q $CONTAINER; then
@@ -48,7 +48,5 @@ fi
 
 # Exec the command on docker container.
 $CMD $@ || exit 1
-
-exit 0
 
 # The End
