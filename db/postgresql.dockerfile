@@ -12,3 +12,6 @@ FROM postgres:alpine
 ENV POSTGRES_DB gacdb
 ENV POSTGRES_USER gac
 ENV POSTGRES_PASSWORD gac
+
+# Copy the script to the default initialization directory of PostgreSQL
+COPY init.sql /docker-entrypoint-initdb.d/

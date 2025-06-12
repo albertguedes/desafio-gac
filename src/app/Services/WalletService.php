@@ -98,27 +98,27 @@ class WalletService
         DB::transaction(function () use ($transaction)
         {
             $type = $transaction->type;
-            $amount = abs($transaction->amount);
 
             if($type == TransactionType::Deposit->value){
-                $this->reverseDeposit($transaction, $amount);
+                $this->reverseDeposit($transaction);
             }
 
             if($type == TransactionType::TransferSent->value)
             {
-                $this->reverseTransferSent($transaction, $amount);
+                $this->reverseTransferSent($transaction);
             }
 
             if($type == TransactionType::TransferReceived->value){
-                $this->reverseTransferReceived($transaction, $amount);
+                $this->reverseTransferReceived($transaction);
             }
         });
     }
 
-    private function reverseDeposit(Transaction $transaction, int $amount): void
+    private function reverseDeposit(Transaction $transaction): void
     {
-        DB::transaction(function () use ($transaction, $amount)
+        DB::transaction(function () use ($transaction)
         {
+            $amount = abs($transaction->amount);
             $transaction->account->lockForUpdate();
             $transaction->relatedAccount?->lockForUpdate();
 
@@ -134,27 +134,27 @@ class WalletService
         });
     }
 
-    private function reverseTransferSent(Transaction $transaction, int $amount): void
+    private function reverseTransferSent(Transaction $transaction): void
     {
-        DB::transaction(function () use ($transaction, $amount)
+        DB::transaction(function () use ($transaction)
         {
             $transaction->account->lockForUpdate();
             $transaction->relatedAccount?->lockForUpdate();
 
-            $reverse_transaction = $this->createReceiveTransaction($transaction->relatedAccount, $transaction->account, $amount);
+            $reverse_transaction = $this->createReceiveTransaction($transaction->relatedAccount, $transaction->account, -$transaction->amount);
             $reverse_transaction->type = TransactionType::Reversal->value;
             $reverse_transaction->save();
 
-            $transaction->account->balance += $amount;
+            $transaction->account->balance += -$transaction->amount;
             $transaction->account->save();
             $transaction->status = TransactionStatus::Reversed->value;
             $transaction->save();
 
-            $reverse_related_transaction = $this->createSendTransaction($transaction->relatedAccount, $transaction->account, $amount);
+            $reverse_related_transaction = $this->createSendTransaction($transaction->relatedAccount, $transaction->account, -$transaction->amount);
             $reverse_related_transaction->type = TransactionType::Reversal->value;
             $reverse_related_transaction->save();
 
-            $transaction->relatedTransaction->account->balance -= $amount;
+            $transaction->relatedTransaction->account->balance -= -$transaction->amount;
             $transaction->relatedTransaction->account->save();
 
             $transaction->relatedTransaction->status = TransactionStatus::Reversed->value;
@@ -162,28 +162,28 @@ class WalletService
         });
     }
 
-    private function reverseTransferReceived(Transaction $transaction, int $amount): void
+    private function reverseTransferReceived(Transaction $transaction): void
     {
-        DB::transaction(function () use ($transaction, $amount)
+        DB::transaction(function () use ($transaction)
         {
             $transaction->account->lockForUpdate();
             $transaction->relatedAccount?->lockForUpdate();
 
-            $reverse_transaction = $this->createSendTransaction($transaction->account, $transaction->relatedAccount, $amount);
+            $reverse_transaction = $this->createSendTransaction($transaction->account, $transaction->relatedAccount, $transaction->amount);
             $reverse_transaction->type = TransactionType::Reversal->value;
             $reverse_transaction->save();
 
-            $transaction->account->balance -= $amount;
+            $transaction->account->balance -= $transaction->amount;
             $transaction->account->save();
 
             $transaction->status = TransactionStatus::Reversed->value;
             $transaction->save();
 
-            $reverse_related_transaction = $this->createReceiveTransaction($transaction->account, $transaction->relatedAccount, $amount);
+            $reverse_related_transaction = $this->createReceiveTransaction($transaction->account, $transaction->relatedAccount, $transaction->amount);
             $reverse_related_transaction->type = TransactionType::Reversal->value;
             $reverse_related_transaction->save();
 
-            $transaction->relatedTransaction->account->balance += $amount;
+            $transaction->relatedTransaction->account->balance += $transaction->amount;
             $transaction->relatedTransaction->account->save();
 
             $transaction->relatedTransaction->status = TransactionStatus::Reversed->value;
@@ -246,7 +246,7 @@ class WalletService
     private function checkBalance(Account $account, int $amount): void
     {
         if ($account->balance < $amount) {
-            throw new Exception('Insufficient balance');
+            throw new \RuntimeException('Insufficient balance');
         }
     }
 
@@ -259,7 +259,7 @@ class WalletService
     private function assertPositiveAmount(int $amount): void
     {
         if ($amount < 0) {
-            throw new Exception('Amount must be positive');
+            throw new \InvalidArgumentException('Amount must be positive');
         }
     }
 

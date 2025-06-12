@@ -29,6 +29,6 @@ RUN php composer-setup.php --install-dir=/usr/local/bin --filename=composer
 RUN php -r "unlink('composer-setup.php');"
 
 # Case laravel storage folder exists, enable read and write permission.
-RUN chmod -R 777 /var/www/html/storage
+RUN mkdir -p /var/www/html/storage && chmod -R 777 /var/www/html/storage
 
 WORKDIR /var/www/html
